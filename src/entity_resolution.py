@@ -7,12 +7,22 @@ embedding model used for the graph's vector index, then union-find any
 pair above a similarity threshold. The canonical label for a cluster is
 its longest member, on the theory that the fuller name is more
 descriptive (matches the example in the brief).
+
+Names with numbers in them (timestamps, hostnames, percentages) only merge
+when their digits match exactly. Embeddings see "03:04 UTC" and "04:04 UTC"
+as near-identical strings, but one digit is the whole meaning.
 """
 from __future__ import annotations
+
+import re
 
 from .embedder import embed
 
 SIMILARITY_THRESHOLD = 0.80
+
+
+def _digits(name: str) -> str:
+    return "".join(re.findall(r"\d", name))
 
 
 class _UnionFind:
@@ -42,7 +52,7 @@ def resolve_entities(triples: list[dict]) -> tuple[list[dict], dict[str, str]]:
     sims = vectors @ vectors.T
     for i in range(len(names)):
         for j in range(i + 1, len(names)):
-            if sims[i, j] >= SIMILARITY_THRESHOLD:
+            if sims[i, j] >= SIMILARITY_THRESHOLD and _digits(names[i]) == _digits(names[j]):
                 uf.union(names[i], names[j])
 
     clusters: dict[str, list[str]] = {}

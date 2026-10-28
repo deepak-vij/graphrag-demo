@@ -61,7 +61,7 @@ def extract_triples(chunk_text: str, model: str | None = None) -> list[dict]:
     client = _get_client()
     resp = client.messages.create(
         model=model or ANTHROPIC_MODEL,
-        max_tokens=1024,
+        max_tokens=4096,
         tools=[_EXTRACT_TOOL],
         tool_choice={"type": "tool", "name": "record_triples"},
         messages=[
@@ -72,7 +72,10 @@ def extract_triples(chunk_text: str, model: str | None = None) -> list[dict]:
                     "Use short, consistent relation names (snake_case verbs). "
                     "Prefer the fullest form of an entity name when the text gives one "
                     "(e.g. keep 'Authentication Database' rather than abbreviating it), "
-                    "but don't invent facts not stated in the text.\n\n"
+                    "but don't invent facts not stated in the text. "
+                    "Attach each time, number or measurement only to the entity the text "
+                    "gives it to: in 'Checkout failed at 03:09 because Login was failing', "
+                    "03:09 belongs to Checkout, not Login.\n\n"
                     f"---\n{chunk_text}\n---"
                 ),
             }

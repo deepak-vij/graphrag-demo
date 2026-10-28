@@ -26,15 +26,15 @@ The first run will download the ~90MB embedding model from Hugging Face.
 # resolve entity aliases -> build the graph -> embed it -> save to store/
 python -m src.ingest
 
-# Online pipeline: ask a multi-hop question
+# Static GraphRAG (online pipeline): fixed 2-hop walk, one LLM call
 python -m src.query "Why did revenue drop during the incident, and who fixed it?"
 
 # Compare against plain vector RAG over the same raw text (no graph)
 python -m src.naive_vector_rag "Why did revenue drop during the incident, and who fixed it?"
 
-# Agentic GraphRAG: Claude explores the same graph with search_graph /
-# get_neighbors tools instead of a fixed 2-hop walk
-python -m src.agentic_rag "Why did revenue drop during the incident, and who fixed it?"
+# Dynamic GraphRAG: Claude explores the same graph with search_graph /
+# get_neighbors tools in a loop instead of a fixed 2-hop walk
+python -m src.dynamic_graphrag "Why did revenue drop during the incident, and who fixed it?"
 ```
 
 Try other questions too, e.g. `"What does Checkout Service depend on?"` or

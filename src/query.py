@@ -120,7 +120,7 @@ def run(question: str, top_k: int = None, max_hops: int = None, max_triples: int
     answer = generate_answer(question, context, model=model)
     timings["generation"] = time.perf_counter() - t0
 
-    print("\n--- Answer ---")
+    print("\n--- Answer (static GraphRAG) ---")
     print(answer)
 
     print("\n--- Latency budget (the tax this architecture accepts) ---")
@@ -132,7 +132,7 @@ def run(question: str, top_k: int = None, max_hops: int = None, max_triples: int
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Query the GraphRAG demo.")
+    parser = argparse.ArgumentParser(description="Static GraphRAG: fixed 2-hop walk, one LLM call.")
     parser.add_argument("question", nargs="?", default="Why did revenue drop during the incident, and who fixed it?")
     parser.add_argument("--top-k", type=int, default=None)
     parser.add_argument("--max-hops", type=int, default=None)

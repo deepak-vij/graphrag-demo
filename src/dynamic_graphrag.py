@@ -1,5 +1,5 @@
-"""Agentic GraphRAG: same graph and vector store as query.py, but Claude
-decides what to retrieve.
+"""Dynamic GraphRAG: same graph and vector store as static GraphRAG
+(query.py), but Claude decides what to retrieve.
 
 query.py runs a fixed pipeline (2 anchors, 2 hops, 12 triples) and calls
 Claude once. Here Claude gets two tools over the same dual store and calls
@@ -12,7 +12,7 @@ So if the first hop shows "PM-2216 opened_by Priya Nair", the model can
 choose to look at Priya Nair's edges next, which the fixed 2-hop walk in
 query.py never reaches.
 
-Run with:  python -m src.agentic_rag "Why did revenue drop during the incident, and who fixed it?"
+Run with:  python -m src.dynamic_graphrag "Why did revenue drop during the incident, and who fixed it?"
 """
 from __future__ import annotations
 
@@ -129,14 +129,14 @@ def run(question: str, max_steps: int = MAX_STEPS, model: str = None) -> str:
     else:
         answer = f"[gave up after {max_steps} steps without a final answer]"
 
-    print("\n--- Answer (agentic GraphRAG) ---")
+    print("\n--- Answer (dynamic GraphRAG) ---")
     print(answer)
     print(f"\n  total: {(time.perf_counter() - t0) * 1000:.0f} ms over {step} LLM call(s)")
     return answer
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Agentic GraphRAG: Claude explores the graph with tools.")
+    parser = argparse.ArgumentParser(description="Dynamic GraphRAG: Claude explores the graph with tools.")
     parser.add_argument("question", nargs="?", default="Why did revenue drop during the incident, and who fixed it?")
     parser.add_argument("--max-steps", type=int, default=MAX_STEPS)
     parser.add_argument("--model", default=None, help=f"Agent LLM override (default: {config.ANTHROPIC_MODEL})")

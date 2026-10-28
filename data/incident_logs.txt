@@ -1,0 +1,40 @@
+=== Log Entry 2026-09-10 03:12 UTC | Source: infra-alerts ===
+The Authentication Database experienced a disk volume failure at 03:04 UTC. On-call engineer
+Priya Nair was paged. The Auth DB runs on host db-auth-03 in the us-east-1 region.
+
+=== Log Entry 2026-09-10 03:15 UTC | Source: service-mesh ===
+Login Service began returning HTTP 500 errors starting at 03:06 UTC. Login Service depends on
+the Authentication Database for credential lookups. Error rate climbed to 92% within four minutes.
+
+=== Log Entry 2026-09-10 03:18 UTC | Source: service-mesh ===
+Checkout Service reported cascading failures at 03:09 UTC. Checkout Service calls Login Service
+to validate session tokens before allowing purchases. Because Login Service was failing, Checkout
+Service could not confirm any user sessions.
+
+=== Log Entry 2026-09-10 03:22 UTC | Source: billing-team ===
+The Payments Svc, owned by the billing team, logged a 78% drop in successful transactions between
+03:09 and 03:40 UTC. Payments Svc is invoked by Checkout Service as the final step of the purchase
+flow. No direct fault was found in Payments Svc itself.
+
+=== Log Entry 2026-09-10 03:25 UTC | Source: analytics ===
+Revenue Dashboard flagged an anomalous 61% drop in completed orders during the incident window.
+Revenue Dashboard aggregates completed-order events emitted by the Payment Service after a
+successful charge.
+
+=== Log Entry 2026-09-10 04:02 UTC | Source: infra-alerts ===
+Engineer Priya Nair restored the Auth Database by failing over to replica db-auth-04. Login
+Service recovered within two minutes of the failover completing.
+
+=== Log Entry 2026-09-10 04:05 UTC | Source: service-mesh ===
+Checkout Service error rates returned to baseline at 04:04 UTC, immediately after Login Service
+recovered, confirming Checkout Service's dependency on Login Service.
+
+=== Log Entry 2026-09-10 09:00 UTC | Source: postmortem-bot ===
+Postmortem PM-2216 was opened by Priya Nair. Root cause: Authentication Database disk failure.
+Blast radius: Login Service, Checkout Service, Payment Service completions, Revenue Dashboard
+reporting. PM-2216 recommends adding a secondary replica for the Auth DB in us-east-1.
+
+=== Log Entry 2026-08-02 11:40 UTC | Source: infra-alerts (unrelated incident) ===
+Search Index Service experienced elevated latency due to a cache warmup after a deploy. Search
+Index Service is maintained by the search-relevance team and does not depend on the Authentication
+Database or Login Service.

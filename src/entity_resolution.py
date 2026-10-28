@@ -1,0 +1,67 @@
+"""Named Entity Resolution: merge aliases like "Auth DB" / "Authentication
+Database" / "Auth Database" into one canonical node before they ever reach
+the graph. Skipping this step is exactly what causes graph fragmentation.
+
+Approach: embed every distinct entity name with the same open-source
+embedding model used for the graph's vector index, then union-find any
+pair above a similarity threshold. The canonical label for a cluster is
+its longest member, on the theory that the fuller name is more
+descriptive (matches the example in the brief).
+"""
+from __future__ import annotations
+
+from .embedder import embed
+
+SIMILARITY_THRESHOLD = 0.80
+
+
+class _UnionFind:
+    def __init__(self, items: list[str]):
+        self.parent = {item: item for item in items}
+
+    def find(self, x: str) -> str:
+        while self.parent[x] != x:
+            self.parent[x] = self.parent[self.parent[x]]
+            x = self.parent[x]
+        return x
+
+    def union(self, a: str, b: str) -> None:
+        ra, rb = self.find(a), self.find(b)
+        if ra != rb:
+            self.parent[ra] = rb
+
+
+def resolve_entities(triples: list[dict]) -> tuple[list[dict], dict[str, str]]:
+    names = sorted({t["subject"] for t in triples} | {t["object"] for t in triples})
+    if not names:
+        return triples, {}
+
+    vectors = embed(names)
+    uf = _UnionFind(names)
+
+    sims = vectors @ vectors.T
+    for i in range(len(names)):
+        for j in range(i + 1, len(names)):
+            if sims[i, j] >= SIMILARITY_THRESHOLD:
+                uf.union(names[i], names[j])
+
+    clusters: dict[str, list[str]] = {}
+    for name in names:
+        clusters.setdefault(uf.find(name), []).append(name)
+
+    canonical_map: dict[str, str] = {}
+    for members in clusters.values():
+        canonical = max(members, key=len)
+        for member in members:
+            canonical_map[member] = canonical
+
+    resolved = [
+        {
+            **t,
+            "subject": canonical_map[t["subject"]],
+            "object": canonical_map[t["object"]],
+        }
+        for t in triples
+    ]
+    merges = {k: v for k, v in canonical_map.items() if k != v}
+    return resolved, merges

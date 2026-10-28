@@ -31,6 +31,10 @@ python -m src.query "Why did revenue drop during the incident, and who fixed it?
 
 # Compare against plain vector RAG over the same raw text (no graph)
 python -m src.naive_vector_rag "Why did revenue drop during the incident, and who fixed it?"
+
+# Agentic GraphRAG: Claude explores the same graph with search_graph /
+# get_neighbors tools instead of a fixed 2-hop walk
+python -m src.agentic_rag "Why did revenue drop during the incident, and who fixed it?"
 ```
 
 Try other questions too, e.g. `"What does Checkout Service depend on?"` or

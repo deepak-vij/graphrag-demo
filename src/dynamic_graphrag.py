@@ -65,7 +65,9 @@ _SYSTEM = (
     "You answer questions about an incident using only a knowledge graph, which you explore "
     "with the search_graph and get_neighbors tools. Each triple is a verified fact: "
     "subject -[relation]-> object. Follow edges until you can answer every part of the "
-    "question, then trace the chain explicitly in your answer. If the graph doesn't contain "
+    "question, then trace the chain explicitly in your answer. Every link in that chain must be "
+    "an edge you retrieved: if two steps aren't joined by one, call get_neighbors to find the "
+    "missing link instead of bridging the gap yourself. If the graph doesn't contain "
     "the answer, say so instead of guessing."
 )
 

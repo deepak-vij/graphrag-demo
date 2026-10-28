@@ -11,6 +11,10 @@ descriptive (matches the example in the brief).
 Names with numbers in them (timestamps, hostnames, percentages) only merge
 when their digits match exactly. Embeddings see "03:04 UTC" and "04:04 UTC"
 as near-identical strings, but one digit is the whole meaning.
+
+Common abbreviations are expanded before embedding ("Payments Svc" ->
+"Payments Service"), since the embedding model doesn't know "Svc" means
+"Service". The canonical label still comes from the original names.
 """
 from __future__ import annotations
 
@@ -19,10 +23,15 @@ import re
 from .embedder import embed
 
 SIMILARITY_THRESHOLD = 0.80
+ABBREVIATIONS = {"svc": "service", "db": "database"}
 
 
 def _digits(name: str) -> str:
     return "".join(re.findall(r"\d", name))
+
+
+def _expand(name: str) -> str:
+    return re.sub(r"[A-Za-z]+", lambda m: ABBREVIATIONS.get(m.group().lower(), m.group()), name)
 
 
 class _UnionFind:
@@ -46,7 +55,7 @@ def resolve_entities(triples: list[dict]) -> tuple[list[dict], dict[str, str]]:
     if not names:
         return triples, {}
 
-    vectors = embed(names)
+    vectors = embed([_expand(n) for n in names])
     uf = _UnionFind(names)
 
     sims = vectors @ vectors.T

@@ -57,6 +57,26 @@ This is exactly the shape standard vector RAG struggles with: the answer to
 entries, and the query text is semantically closest to the Revenue
 Dashboard entry, not the Auth DB entry where the root cause actually lives.
 
+## Results
+
+On the revenue question, scored against what the logs actually say (one run
+each with `claude-sonnet-5`; wording, tool-call counts and timings will vary
+a little from run to run):
+
+| | Plain vector RAG | Static GraphRAG | Dynamic GraphRAG |
+|---|---|---|---|
+| Why did revenue drop? (Auth DB disk failure) | Not found; guessed "upstream, e.g. Checkout Service" | Found, via the postmortem's blast-radius list | Found, edge by edge: Auth DB -> Login -> Checkout -> Payment Service -> orders |
+| Who fixed it? (Priya Nair, failover to db-auth-04) | Not found | Not found; only saw that she opened the postmortem | Found |
+| Invented facts? | No | No | No |
+| Query-time LLM calls | 1 | 1 | 7 (15 tool calls) |
+| Total time | — | 14.3 s | 24.8 s |
+
+Plain vector RAG retrieves the Revenue Dashboard and Payments entries; the
+postmortem ranks 7th of 9 and the root-cause entry never comes back. Static
+GraphRAG reaches the root cause at hop 2 but not the fix, whose edge is 3
+hops from the anchor. Dynamic GraphRAG decides how far to walk, so it gets
+both, at the cost of more LLM calls.
+
 ## Where each step lives
 
 **Offline pipeline**
@@ -64,7 +84,7 @@ Dashboard entry, not the Auth DB entry where the root cause actually lives.
 | Step | What | File |
 |---|---|---|
 | 1-2 | Extractor LLM -> triples (Claude, forced tool-use for structured output) | `src/llm_client.py: extract_triples` |
-| 1-2 | Named Entity Resolution (embed entity names, union-find merge above a similarity threshold, canonical = longest alias) | `src/entity_resolution.py` |
+| 1-2 | Named Entity Resolution (expand abbreviations like Svc/DB, embed entity names, union-find merge above a similarity threshold, names with numbers merge only if their digits match, canonical = longest alias) | `src/entity_resolution.py` |
 | 3 | Build the Knowledge Graph (NetworkX `MultiDiGraph`) | `src/graph_store.py: build_graph` |
 | 3 | Synthesize node/edge text for embedding ("node label + attributes", "edge -> descriptive string") | `src/graph_store.py: node_representation`, `edge_representation` |
 | 3 | Embed + persist the dual store (graph as GraphML, vectors as `.npz`) | `src/ingest.py` |
@@ -77,6 +97,7 @@ Dashboard entry, not the Auth DB entry where the root cause actually lives.
 | 7 | Deterministic multi-hop BFS from the anchors | `src/query.py: traverse` |
 | 8 | Compress + dedupe + truncate to a fixed triple budget (`MAX_CONTEXT_TRIPLES`) | `src/query.py: compile_context` |
 | 9 | Grounded generation, constrained to the compiled triples | `src/llm_client.py: generate_answer` |
+| 4-9 | Dynamic GraphRAG: Claude runs steps 4-9 itself with `search_graph` / `get_neighbors` tools in a loop (max 8 rounds) | `src/dynamic_graphrag.py` |
 
 `src/query.py` also times each step and prints a latency breakdown at the
 end, so you can see the "latency tax" from the trade-offs section directly:

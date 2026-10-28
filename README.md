@@ -8,6 +8,9 @@ pipeline without a database server in the way. The only external calls are
 to Claude (as the Extractor LLM and the Generator LLM) and to a local,
 open-source embedding model (`sentence-transformers/all-MiniLM-L6-v2`).
 
+The architecture follows Vishal Dalmiya's
+[LinkedIn post on GraphRAG system architecture](https://www.linkedin.com/posts/vishaldalmiya_graphrag-systemarchitecture-generativeai-share-7505483330897809408-FBJy/).
+
 ## Setup
 
 ```bash

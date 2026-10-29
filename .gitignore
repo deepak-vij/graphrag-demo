@@ -3,3 +3,4 @@ store/*
 !store/.gitkeep
 __pycache__/
 *.pyc
+okf_bundle/

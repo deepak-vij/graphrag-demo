@@ -38,6 +38,12 @@ python -m src.naive_vector_rag "Why did revenue drop during the incident, and wh
 # Dynamic GraphRAG: Claude explores the same graph with search_graph /
 # get_neighbors tools in a loop instead of a fixed 2-hop walk
 python -m src.dynamic_graphrag "Why did revenue drop during the incident, and who fixed it?"
+
+# OKF agent: Claude curates the logs into an Open Knowledge Format bundle
+# (markdown concept files that link to each other), then answers by reading
+# the index and following links. No graph, no embeddings.
+python -m src.build_okf   # once, writes okf_bundle/
+python -m src.okf_agent "Why did revenue drop during the incident, and who fixed it?"
 ```
 
 Try other questions too, e.g. `"What does Checkout Service depend on?"` or
@@ -66,19 +72,26 @@ On the revenue question, scored against what the logs actually say (one run
 each with `claude-sonnet-5`; wording, tool-call counts and timings will vary
 a little from run to run):
 
-| | Plain vector RAG | Static GraphRAG | Dynamic GraphRAG |
-|---|---|---|---|
-| Why did revenue drop? (Auth DB disk failure) | Not found; guessed "upstream, e.g. Checkout Service" | Found, via the postmortem's blast-radius list | Found, edge by edge: Auth DB -> Login -> Checkout -> Payment Service -> orders |
-| Who fixed it? (Priya Nair, failover to db-auth-04) | Not found | Not found; only saw that she opened the postmortem | Found |
-| Invented facts? | No | No | No |
-| Query-time LLM calls | 1 | 1 | 7 (15 tool calls) |
-| Total time | — | 14.3 s | 24.8 s |
+| | Plain vector RAG | Static GraphRAG | Dynamic GraphRAG | OKF agent |
+|---|---|---|---|---|
+| Why did revenue drop? (Auth DB disk failure) | Not found; guessed "upstream, e.g. Checkout Service" | Found, via the postmortem's blast-radius list | Found, edge by edge: Auth DB -> Login -> Checkout -> Payment Service -> orders | Found, the same full chain |
+| Who fixed it? (Priya Nair, failover to db-auth-04) | Not found | Not found; only saw that she opened the postmortem | Found | Found |
+| Invented facts? | No | No | No | No |
+| Query-time LLM calls | 1 | 1 | 7 (15 tool calls) | 4 (8 document reads) |
+| Total time | — | 14.3 s | 24.8 s | 14.8 s |
+| Build step | none | 9 LLM calls + embeddings | same as static | 1 LLM call, no embeddings |
 
 Plain vector RAG retrieves the Revenue Dashboard and Payments entries; the
 postmortem ranks 7th of 9 and the root-cause entry never comes back. Static
 GraphRAG reaches the root cause at hop 2 but not the fix, whose edge is 3
 hops from the anchor. Dynamic GraphRAG decides how far to walk, so it gets
 both, at the cost of more LLM calls.
+
+The OKF agent matched dynamic GraphRAG's accuracy with about half the LLM
+calls and time: the bundle's `index.md` gives it a map of every concept up
+front, and each concept file holds whole sourced sentences rather than single
+triples. The catch is scale: index-first reading works while the index fits
+in a prompt, and answer quality rests on how well the LLM curated the bundle.
 
 ## Where each step lives
 
@@ -101,6 +114,13 @@ both, at the cost of more LLM calls.
 | 8 | Compress + dedupe + truncate to a fixed triple budget (`MAX_CONTEXT_TRIPLES`) | `src/query.py: compile_context` |
 | 9 | Grounded generation, constrained to the compiled triples | `src/llm_client.py: generate_answer` |
 | 4-9 | Dynamic GraphRAG: Claude runs steps 4-9 itself with `search_graph` / `get_neighbors` tools in a loop (max 8 rounds) | `src/dynamic_graphrag.py` |
+
+**OKF alternative** ([Open Knowledge Format v0.2](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md))
+
+| Step | What | File |
+|---|---|---|
+| Build | Claude curates all log entries into one concept file per real-world thing (frontmatter: `type`, `title`, `description`, `tags`, `sources`), with linked prose and footnoted sources; `index.md` is generated from the frontmatter | `src/build_okf.py` |
+| Query | Claude reads `index.md`, then concept files via `read_index` / `read_concept`, following links until it can answer (max 8 rounds) | `src/okf_agent.py` |
 
 `src/query.py` also times each step and prints a latency breakdown at the
 end, so you can see the "latency tax" from the trade-offs section directly:

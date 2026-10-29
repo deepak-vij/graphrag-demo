@@ -10,6 +10,9 @@ VECTORS_PATH = STORE_DIR / "vectors.npz"
 NODE_META_PATH = STORE_DIR / "node_meta.json"
 RAW_CHUNKS_PATH = STORE_DIR / "raw_chunks.json"
 
+# Open Knowledge Format bundle written by src/build_okf.py
+OKF_DIR = ROOT_DIR / "okf_bundle"
+
 # Extractor / Generator LLM (Anthropic). Override per-run with `--model` on
 # any of the CLI scripts, or by exporting ANTHROPIC_MODEL before running.
 ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5")
